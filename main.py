@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
+from flask import Flask
+from threading import Thread
 from dotenv import load_dotenv
 import os
-from threading import Thread  # Correction
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -23,6 +24,21 @@ intents.reactions = True
 # Initialisation du bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# === Serveur Web Flask ===
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Le bot est en ligne et répond aux pings !"
+
+# Fonction pour lancer le serveur Flask dans un thread séparé
+def run_webserver():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    thread = Thread(target=run_webserver)
+    thread.start()
+    
 # Stocker les threads créés pour éviter les doublons
 message_threads = {}
 
