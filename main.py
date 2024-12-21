@@ -57,36 +57,6 @@ async def on_message(message):
             # Ajouter l'image dans le fil
             await thread.send(content=f"Image postée par {message.author.mention} :", file=await message.attachments[0].to_file())
 
-        # Envoyer un message privé pour demander une description
-        if message.author.id not in descriptions:
-            try:
-                await message.author.send(
-                    f"Bonjour {message.author.display_name} ! Vous venez de poster une image dans {message.channel.mention}. "
-                    f"Souhaitez-vous ajouter une description à votre photo ? Répondez ici pour l'ajouter. "
-                    f"(Votre description sera ajoutée au fil dédié à votre photo)."
-                )
-            except discord.Forbidden:
-                print(f"Impossible d'envoyer un message privé à {message.author}.")
-
-@bot.event
-async def on_message_edit(message_before, message_after):
-    pass  # Ignorer les éditions de messages pour cet usage
-
-@bot.event
-async def on_message(message):
-    if not message.guild and message.author.id in threads_created.values():
-        # Ajouter la description
-        descriptions[message.author.id] = message.content
-
-        # Confirmer à l'utilisateur
-        await message.channel.send("Merci ! Votre description a été enregistrée et ajoutée au fil de votre image.")
-
-        # Ajouter la description au fil correspondant
-        thread_id = threads_created.get(message.author.id)
-        if thread_id:
-            thread = bot.get_channel(thread_id)
-            if thread:
-                await thread.send(f"Description ajoutée par {message.author.mention} : {message.content}")
 
 @bot.event
 async def on_reaction_add(reaction, user):
