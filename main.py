@@ -54,7 +54,7 @@ async def on_message(message):
 
         await thread.send(
             f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
-            f"Merci de respecter la personne et de rester courtois."
+            f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
         )
 
 @bot.event
