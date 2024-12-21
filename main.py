@@ -17,6 +17,7 @@ intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 intents.guilds = True
+intents.dm_messages = True  # Pour envoyer des messages privés
 
 # Initialisation du bot
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -38,6 +39,15 @@ async def on_message(message):
         for reaction in VALID_REACTIONS:
             await message.add_reaction(reaction)
 
+        # Envoyer un message privé à l'utilisateur pour une description
+        try:
+            await message.author.send(
+                f"Bonjour {message.author.mention} ! Vous venez de poster une image dans {message.channel.mention}. "
+                f"Souhaitez-vous ajouter une description à votre photo ? Répondez ici pour l'ajouter."
+            )
+        except discord.Forbidden:
+            print(f"Impossible d'envoyer un message privé à {message.author}.")
+
 @bot.event
 async def on_reaction_add(reaction, user):
     # Ignorer les réactions du bot
@@ -46,19 +56,15 @@ async def on_reaction_add(reaction, user):
 
     # Vérifier que la réaction est sur un message dans le bon salon
     if reaction.message.channel.id == TARGET_CHANNEL_ID and str(reaction.emoji) in VALID_REACTIONS:
-        # Vérifier si un fil n'existe pas déjà pour ce message
-        thread_name = f"Fil de {reaction.message.author.display_name}"
-        existing_thread = discord.utils.find(lambda t: t.name == thread_name, reaction.message.channel.threads)
+        # Créer un fil avec un nom unique basé sur l'ID du message
+        thread_name = f"Fil pour l'image {reaction.message.id}"
+        thread = await reaction.message.create_thread(name=thread_name)
 
-        if existing_thread is None:
-            # Créer un fil
-            thread = await reaction.message.create_thread(name=thread_name)
-
-            # Ajouter un message dans le fil
-            await thread.send(
-                f"Bienvenue dans le fil de discussion créé pour l'image postée par {reaction.message.author.mention}. "
-                f"Merci de respecter la personne et de rester courtois."
-            )
+        # Ajouter un message dans le fil
+        await thread.send(
+            f"Bienvenue dans le fil de discussion créé pour l'image postée par {reaction.message.author.mention}. "
+            f"Merci de respecter la personne et de rester courtois."
+        )
 
         # Ajouter l'utilisateur au fil
         await thread.add_user(user)
