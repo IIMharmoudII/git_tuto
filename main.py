@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import discord
 from discord.ext import commands
-from flask import Flask
 from dotenv import load_dotenv
 import os
+from threading import Thread  # Correction
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -19,24 +19,9 @@ intents.messages = True
 intents.message_content = True
 intents.guilds = True
 intents.reactions = True
-intents.dm_messages = True  # Pour gérer les messages privés
 
 # Initialisation du bot
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-# === Serveur Web ===
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Le bot est en ligne !"
-
-def run():
-    app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
 
 # Stocker les threads créés pour éviter les doublons
 message_threads = {}
@@ -94,6 +79,24 @@ async def on_reaction_add(reaction, user):
         await thread.send(
             f"{user.mention} a réagi à cette image avec {reaction.emoji}."
         )
+
+# Si Render exige un service web, gardez cette partie
+from flask import Flask
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Le bot est en ligne !"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# Garder ou supprimer selon Render
+keep_alive()
 
 # Démarrer le bot
 bot.run(TOKEN)
