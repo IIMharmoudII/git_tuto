@@ -57,14 +57,6 @@ async def on_message(message):
             f"Merci de respecter la personne et de rester courtois."
         )
 
-        # Envoyer un message privé à l'auteur
-        try:
-            await message.author.send(
-                "Vous avez ajouté une image dans le salon ! Vous pouvez ajouter une description ou vos envies directement dans le fil de discussion associé."
-            )
-        except discord.Forbidden:
-            print(f"Impossible d'envoyer un message privé à {message.author}")
-
 @bot.event
 async def on_reaction_add(reaction, user):
     # Ignorer les réactions du bot
