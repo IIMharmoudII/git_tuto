@@ -32,8 +32,8 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # Vérifier si le message est dans le bon salon
-    if message.channel.id == TARGET_CHANNEL_ID:
+    # Vérifier si le message est dans le salon cible
+    if message.guild and message.channel.id == TARGET_CHANNEL_ID:
         # Supprimer les messages sans image
         if not message.attachments:
             await message.delete()
@@ -57,13 +57,8 @@ async def on_message(message):
             # Ajouter l'image dans le fil
             await thread.send(content=f"Image postée par {message.author.mention} :", file=await message.attachments[0].to_file())
 
-@bot.event
-async def on_message_edit(message_before, message_after):
-    pass  # Ignorer les éditions de messages pour cet usage
-
-@bot.event
-async def on_message(message):
-    if not message.guild and message.author.id in threads_created.values():
+    # Vérifier si le message est en MP et concerne une description
+    elif not message.guild and message.author.id in threads_created:
         # Ajouter la description
         descriptions[message.author.id] = message.content
 
