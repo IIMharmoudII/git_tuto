@@ -17,14 +17,14 @@ intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 intents.guilds = True
+intents.reactions = True
 intents.dm_messages = True  # Pour gérer les messages privés
 
 # Initialisation du bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Stocker les descriptions et les fils créés
-descriptions = {}
-threads_created = {}
+# Stocker les threads créés pour éviter les doublons
+message_threads = {}
 
 @bot.event
 async def on_ready():
@@ -32,6 +32,10 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # Ignorer les messages du bot
+    if message.author.bot:
+        return
+
     # Vérifier si le message est dans le bon salon
     if message.channel.id == TARGET_CHANNEL_ID:
         # Supprimer les messages sans image
@@ -43,20 +47,23 @@ async def on_message(message):
         for reaction in VALID_REACTIONS:
             await message.add_reaction(reaction)
 
-        # Créer un fil unique pour l'image
-        if message.id not in threads_created:
-            thread_name = f"Fil de {message.author.display_name}"
-            thread = await message.create_thread(name=thread_name)
-            threads_created[message.id] = thread.id
+        # Créer un fil pour chaque nouvelle image
+        thread_name = f"Fil de {message.author.display_name}"
+        thread = await message.create_thread(name=thread_name)
+        message_threads[message.id] = thread.id
 
-            # Ajouter un message de courtoisie dans le fil
-            await thread.send(
-                f"Bienvenue dans le fil pour l'image postée par {message.author.mention}. Merci de respecter la personne et de rester courtois."
+        await thread.send(
+            f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
+            f"Merci de respecter la personne et de rester courtois."
+        )
+
+        # Envoyer un message privé à l'auteur
+        try:
+            await message.author.send(
+                "Vous avez ajouté une image dans le salon ! Vous pouvez ajouter une description ou vos envies directement dans le fil de discussion associé."
             )
-
-            # Ajouter l'image dans le fil
-            await thread.send(content=f"Image postée par {message.author.mention} :", file=await message.attachments[0].to_file())
-
+        except discord.Forbidden:
+            print(f"Impossible d'envoyer un message privé à {message.author}")
 
 @bot.event
 async def on_reaction_add(reaction, user):
@@ -66,15 +73,20 @@ async def on_reaction_add(reaction, user):
 
     # Vérifier que la réaction est sur un message dans le bon salon
     if reaction.message.channel.id == TARGET_CHANNEL_ID and str(reaction.emoji) in VALID_REACTIONS:
-        if reaction.message.id not in threads_created:
+        if reaction.message.id in message_threads:
+            # Récupérer le thread existant
+            thread_id = message_threads[reaction.message.id]
+            thread = await reaction.message.guild.fetch_channel(thread_id)
+        else:
+            # Créer un nouveau thread si besoin (cas improbable)
             thread_name = f"Fil de {reaction.message.author.display_name}"
             thread = await reaction.message.create_thread(name=thread_name)
-            threads_created[reaction.message.id] = thread.id
+            message_threads[reaction.message.id] = thread.id
 
-            # Ajouter un message dans le fil
-            await thread.send(
-                f"Bienvenue dans le fil pour l'image postée par {reaction.message.author.mention}. Merci de respecter la personne et de rester courtois."
-            )
+        # Ajouter un message dans le fil
+        await thread.send(
+            f"{user.mention} a réagi à cette image avec {reaction.emoji}."
+        )
 
-# Lancer le bot
+# Démarrer le bot
 bot.run(TOKEN)
