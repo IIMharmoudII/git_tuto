@@ -72,13 +72,13 @@ async def on_message_edit(message_before, message_after):
         descriptions[message_after.author.id] = message_after.content
 
         # Confirmer à l'utilisateur
-        await message_after.channel.send("Merci ! Votre description a été enregistrée.")
+        await message_after.channel.send("Merci ! Votre description a été enregistrée et ajoutée au fil de votre image.")
 
         # Ajouter la description au fil correspondant
         for msg_id, thread_id in threads_created.items():
             thread = bot.get_channel(thread_id)
             if thread and thread.owner.id == message_after.author.id:
-                await thread.send(f"Description ajoutée par l'utilisateur : {message_after.content}")
+                await thread.send(f"Description ajoutée par {message_after.author.mention} : {message_after.content}")
                 break
 
 @bot.event
