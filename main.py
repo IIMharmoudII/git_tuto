@@ -114,5 +114,6 @@ def keep_alive():
 # Garder ou supprimer selon Render
 keep_alive()
 
-# Démarrer le bot
+# === Lancer le bot ===
+keep_alive()
 bot.run(TOKEN)
