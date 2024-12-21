@@ -22,7 +22,8 @@ intents.dm_messages = True  # Pour gérer les messages privés
 # Initialisation du bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Stocker les descriptions déjà ajoutées pour éviter les mises à jour multiples
+# Stockage des fils et descriptions
+user_threads = {}
 user_descriptions = {}
 
 @bot.event
@@ -35,21 +36,32 @@ async def on_message(message):
     if message.channel.id == TARGET_CHANNEL_ID:
         # Supprimer les messages sans image
         if not message.attachments:
-            await message.delete()  # Supprime le message sans pièce jointe
+            await message.delete()
             return
 
         # Ajouter les réactions "Validé" et "Pas validé"
         for reaction in VALID_REACTIONS:
             await message.add_reaction(reaction)
 
-        # Envoyer un message privé à l'utilisateur pour une description
+        # Créer un fil pour l'image
+        thread_name = f"Fil de {message.author.display_name}"
+        thread = await message.create_thread(name=thread_name)
+
+        # Envoyer un message dans le fil
+        await thread.send(
+            f"Bienvenue dans le fil de discussion créé pour l'image postée par {message.author.mention}.\n"
+            f"Merci de respecter la personne et de rester courtois."
+        )
+
+        # Enregistrer le fil pour l'utilisateur
+        user_threads[message.id] = thread.id
+
+        # Envoyer un DM à l'utilisateur pour ajouter une description
         try:
-            if message.author.id not in user_descriptions:
-                await message.author.send(
-                    f"Bonjour {message.author.mention} ! Vous venez de poster une image dans {message.channel.mention}. "
-                    f"Souhaitez-vous ajouter une description à votre photo ? Répondez ici pour l'ajouter. "
-                    f"(Votre description sera ajoutée au fil dédié à votre photo)."
-                )
+            await message.author.send(
+                f"Bonjour {message.author.mention} ! Vous venez de poster une image dans {message.channel.mention}.\n"
+                f"Souhaitez-vous ajouter une description à votre photo ? Répondez ici pour l'ajouter."
+            )
         except discord.Forbidden:
             print(f"Impossible d'envoyer un message privé à {message.author}.")
 
@@ -59,30 +71,49 @@ async def on_reaction_add(reaction, user):
     if user.bot:
         return
 
-    # Vérifier que la réaction est sur un message dans le bon salon
+    # Vérifier que la réaction est dans le bon salon et valide
     if reaction.message.channel.id == TARGET_CHANNEL_ID and str(reaction.emoji) in VALID_REACTIONS:
-        # Créer un fil avec un nom unique basé sur l'auteur
-        thread_name = f"Fil de {reaction.message.author.display_name}"
-        thread = await reaction.message.create_thread(name=thread_name)
+        message_id = reaction.message.id
 
-        # Ajouter un message dans le fil
-        await thread.send(
-            f"Bienvenue dans le fil de discussion créé pour l'image postée par {reaction.message.author.mention}. "
-            f"Merci de respecter la personne et de rester courtois."
-        )
+        # Récupérer le fil existant ou créer un nouveau
+        if message_id in user_threads:
+            thread = discord.utils.get(reaction.message.channel.threads, id=user_threads[message_id])
+        else:
+            thread_name = f"Fil de {reaction.message.author.display_name}"
+            thread = await reaction.message.create_thread(name=thread_name)
+            user_threads[message_id] = thread.id
 
-        # Ajouter une description si elle existe
-        if reaction.message.author.id in user_descriptions:
-            description = user_descriptions[reaction.message.author.id]
-            await thread.send(f"Description ajoutée par l'utilisateur : {description}")
-
-        # Ajouter l'utilisateur au fil
-        await thread.add_user(user)
+        # Ajouter un message de respect si le fil est nouveau
+        if thread:
+            await thread.send(
+                f"{user.mention} a ajouté une réaction. Merci de respecter l'auteur de l'image."
+            )
 
 @bot.event
-async def on_message_edit(message_before, message_after):
-    # Ignorer les messages qui ne sont pas des réponses en DM
-    if not message_after.guild and message_after.author.id not in user_descriptions:
-        # Enregistrer la description pour l'utilisateur
-        user_descriptions[message_after.author.id] = message_after.content
-        await message_after.channel.send("Merci ! Votre description a été enregistrée.")
+async def on_message_delete(message):
+    # Supprimer le fil associé à un message supprimé
+    if message.id in user_threads:
+        thread_id = user_threads.pop(message.id, None)
+        if thread_id:
+            thread = discord.utils.get(message.channel.threads, id=thread_id)
+            if thread:
+                await thread.delete()
+
+@bot.event
+async def on_message(message):
+    # Vérifier les messages privés pour les descriptions
+    if not message.guild:
+        user_id = message.author.id
+        if user_id not in user_descriptions:
+            user_descriptions[user_id] = message.content
+            await message.channel.send("C'est bon, votre description vient d'être ajoutée.")
+
+            # Ajouter la description au fil associé
+            for msg_id, thread_id in user_threads.items():
+                if message.author.id == bot.get_message(msg_id).author.id:
+                    thread = discord.utils.get(bot.get_channel(TARGET_CHANNEL_ID).threads, id=thread_id)
+                    if thread:
+                        await thread.send(f"Description ajoutée : {message.content}")
+                    break
+
+bot.run(TOKEN)
