@@ -54,6 +54,9 @@ async def on_message(message):
                 f"Bienvenue dans le fil pour l'image postée par {message.author.mention}. Merci de respecter la personne et de rester courtois."
             )
 
+            # Ajouter l'image dans le fil
+            await thread.send(content=f"Image postée par {message.author.mention} :", file=await message.attachments[0].to_file())
+
         # Envoyer un message privé pour demander une description
         if message.author.id not in descriptions:
             try:
@@ -67,19 +70,23 @@ async def on_message(message):
 
 @bot.event
 async def on_message_edit(message_before, message_after):
-    # Ignorer les messages qui ne sont pas des réponses en DM
-    if not message_after.guild and message_after.author.id not in descriptions:
-        descriptions[message_after.author.id] = message_after.content
+    pass  # Ignorer les éditions de messages pour cet usage
+
+@bot.event
+async def on_message(message):
+    if not message.guild and message.author.id in threads_created.values():
+        # Ajouter la description
+        descriptions[message.author.id] = message.content
 
         # Confirmer à l'utilisateur
-        await message_after.channel.send("Merci ! Votre description a été enregistrée et ajoutée au fil de votre image.")
+        await message.channel.send("Merci ! Votre description a été enregistrée et ajoutée au fil de votre image.")
 
         # Ajouter la description au fil correspondant
-        for msg_id, thread_id in threads_created.items():
+        thread_id = threads_created.get(message.author.id)
+        if thread_id:
             thread = bot.get_channel(thread_id)
-            if thread and thread.owner.id == message_after.author.id:
-                await thread.send(f"Description ajoutée par {message_after.author.mention} : {message_after.content}")
-                break
+            if thread:
+                await thread.send(f"Description ajoutée par {message.author.mention} : {message.content}")
 
 @bot.event
 async def on_reaction_add(reaction, user):
