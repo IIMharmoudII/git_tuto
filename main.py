@@ -29,7 +29,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Le bot est en ligne et répond aux pings !"
+    return "Le bot est en ligne et prêt à répondre !"
 
 # Fonction pour lancer le serveur Flask dans un thread séparé
 def run_webserver():
@@ -38,7 +38,7 @@ def run_webserver():
 def keep_alive():
     thread = Thread(target=run_webserver)
     thread.start()
-    
+
 # Stocker les threads créés pour éviter les doublons
 message_threads = {}
 
@@ -96,24 +96,6 @@ async def on_reaction_add(reaction, user):
             f"{user.mention} a réagi à cette image avec {reaction.emoji}."
         )
 
-# Si Render exige un service web, gardez cette partie
-from flask import Flask
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Le bot est en ligne !"
-
-def run():
-    app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-# Garder ou supprimer selon Render
-keep_alive()
-
-# === Lancer le bot ===
+# === Lancer le serveur Flask et le bot ===
 keep_alive()
 bot.run(TOKEN)
