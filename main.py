@@ -1,101 +1,81 @@
 # -*- coding: utf-8 -*-
+
 import discord
-from discord.ext import commands
+from discord.ext import tasks
 from flask import Flask
 from threading import Thread
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
 
 # Charger les variables d'environnement
 load_dotenv()
-TOKEN = os.getenv('TOKEN_BOT_DISCORD')
-
-# ID du salon cible
-TARGET_CHANNEL_ID = 1312570416665071797
-VALID_REACTIONS = ["👍", "👎"]  # Réactions pour validé/pas validé
+TOKEN = os.getenv('TOKEN_BOT_DISCORD')  # Assure-toi que le TOKEN est dans ton fichier .env
 
 # Configurer les intents
 intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
-intents.guilds = True
-intents.reactions = True
+intents.messages = True  # Permet de gérer les messages
+intents.message_content = True  # Accès au contenu des messages
+intents.guilds = True  # Permet de gérer les guildes
 
 # Initialisation du bot
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = discord.Client(intents=intents)
 
-# === Serveur Web Flask ===
+# === Smash or Pass ===
+TARGET_CHANNEL_ID = 1312570416665071797  # ID du canal Smash or Pass
+VALID_REACTIONS = ["👍", "👎"]  # Réactions possibles
+message_threads = {}  # Stocker les IDs des threads associés aux messages
+
+# === Serveur Web (Flask) ===
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Le bot est en ligne et prêt à répondre !"
+    return "Le bot Smash or Pass est en ligne !"
 
-# Fonction pour lancer le serveur Flask dans un thread séparé
-def run_webserver():
+def run():
     app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
-    thread = Thread(target=run_webserver)
-    thread.start()
+    t = Thread(target=run)
+    t.start()
 
-# Stocker les threads créés pour éviter les doublons
-message_threads = {}
+# === Gestion des événements du bot ===
 
 @bot.event
 async def on_ready():
-    print(f"Bot connecté en tant que {bot.user}")
+    print(f"Bot Smash or Pass connecté en tant que {bot.user}")
 
 @bot.event
 async def on_message(message):
-    # Ignorer les messages du bot
+    """Gestion des messages pour le Smash or Pass."""
     if message.author.bot:
-        return
+        return  # Ignorer les messages des bots
 
-    # Vérifier si le message est dans le bon salon
+    # Vérifier si le message est dans le canal ciblé
     if message.channel.id == TARGET_CHANNEL_ID:
-        # Supprimer les messages sans image
+        # Supprimer les messages sans pièce jointe
         if not message.attachments:
             await message.delete()
             return
 
-        # Ajouter les réactions "Validé" et "Pas validé"
+        # Ajouter les réactions spécifiées au message
         for reaction in VALID_REACTIONS:
             await message.add_reaction(reaction)
 
-        # Créer un fil pour chaque nouvelle image
+        # Créer un fil de discussion pour le message
         thread_name = f"Fil de {message.author.display_name}"
         thread = await message.create_thread(name=thread_name)
         message_threads[message.id] = thread.id
 
+        # Envoyer un message d'introduction dans le fil de discussion
         await thread.send(
             f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
             f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
         )
 
-@bot.event
-async def on_reaction_add(reaction, user):
-    # Ignorer les réactions du bot
-    if user.bot:
-        return
+    # Toujours traiter les commandes après les autres actions
+    await bot.process_commands(message)
 
-    # Vérifier que la réaction est sur un message dans le bon salon
-    if reaction.message.channel.id == TARGET_CHANNEL_ID and str(reaction.emoji) in VALID_REACTIONS:
-        if reaction.message.id in message_threads:
-            # Récupérer le thread existant
-            thread_id = message_threads[reaction.message.id]
-            thread = await reaction.message.guild.fetch_channel(thread_id)
-        else:
-            # Créer un nouveau thread si besoin (cas improbable)
-            thread_name = f"Fil de {reaction.message.author.display_name}"
-            thread = await reaction.message.create_thread(name=thread_name)
-            message_threads[reaction.message.id] = thread.id
-
-        # Ajouter un message dans le fil
-        await thread.send(
-            f"{user.mention} a réagi à cette image avec {reaction.emoji}."
-        )
-
-# === Lancer le serveur Flask et le bot ===
+# === Lancer le bot ===
 keep_alive()
 bot.run(TOKEN)
