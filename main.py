@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import discord
-from discord.ext import tasks
+from discord.ext import commands  # Importer la classe commands
 from flask import Flask
 from threading import Thread
 import os
@@ -17,8 +17,8 @@ intents.messages = True
 intents.message_content = True
 intents.guilds = True
 
-# Initialisation du bot
-bot = discord.Client(intents=intents)
+# Initialisation du bot avec commands.Bot
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 # === Smash or Pass ===
 TARGET_CHANNEL_ID = 1312570416665071797
@@ -73,7 +73,13 @@ async def on_message(message):
             f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
         )
 
-    await bot.process_commands(message)
+    await bot.process_commands(message)  # Processus des commandes ajouté ici
+
+# === Commandes du bot ===
+@bot.command()
+async def ping(ctx):
+    """Commande simple pour tester le bot."""
+    await ctx.send("Pong!")
 
 # === Lancer le bot ===
 keep_alive()
