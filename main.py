@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import random
 import os
 from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
-from difflib import get_close_matches
+from aiohttp import web
+import psutil
+import traceback
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -46,6 +48,8 @@ def keep_alive():
 @bot.event
 async def on_ready():
     print(f"Bot Smash or Pass connecté en tant que {bot.user}")
+    monitor_resources.start()  # Lancer la surveillance des ressources
+    keep_alive_task.start()  # Lancer la tâche de maintien de connexion
 
 @bot.event
 async def on_message(message):
@@ -72,11 +76,32 @@ async def on_message(message):
 
     await bot.process_commands(message)  # Processus des commandes ajouté ici
 
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Capturer les erreurs et les journaliser."""
+    with open("bot_errors.log", "a") as f:
+        f.write(f"Une erreur est survenue dans l'événement {event} :\n")
+        f.write(traceback.format_exc())
+
 # === Commandes du bot ===
 @bot.command()
 async def ping(ctx):
     """Commande simple pour tester le bot."""
     await ctx.send("Pong!")
+
+# === Surveiller les ressources ===
+@tasks.loop(seconds=30)
+async def monitor_resources():
+    """Surveiller la consommation des ressources."""
+    process = psutil.Process()
+    print(f"Mémoire utilisée : {process.memory_info().rss / 1024 ** 2:.2f} MB")
+    print(f"CPU utilisé : {process.cpu_percent()}%")
+
+# === Tâche de maintien de connexion ===
+@tasks.loop(seconds=60)
+async def keep_alive_task():
+    """Tâche pour maintenir la connexion avec Discord."""
+    print("Le bot est toujours en ligne.")
 
 # === Lancer le bot ===
 keep_alive()
