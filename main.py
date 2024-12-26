@@ -11,7 +11,7 @@ from difflib import get_close_matches
 
 # Charger les variables d'environnement
 load_dotenv()
-TOKEN = os.getenv('TOKEN_BOT_DISCORD')  # Assure-toi que le TOKEN est dans ton fichier .env
+TOKEN = os.getenv('TOKEN_BOT_DISCORD')
 
 # Configurer les intents
 intents = discord.Intents.default()
