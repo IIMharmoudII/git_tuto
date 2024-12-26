@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import discord
-from discord.ext import commands  # Importer la classe commands
-from flask import Flask
-from threading import Thread
+from discord.ext import commands
+import random
 import os
 from dotenv import load_dotenv
+from flask import Flask
+from threading import Thread
+from difflib import get_close_matches
 
 # Charger les variables d'environnement
 load_dotenv()
